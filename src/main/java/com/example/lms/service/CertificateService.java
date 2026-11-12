@@ -62,8 +62,13 @@ public class CertificateService {
                 Код сертификата: %s
 
                 ═══════════════════════════════════════════
-                """.formatted(certificate.getStudent().getFullName(), certificate.getCourse().getTitle(),
+                """.formatted(singleLine(certificate.getStudent().getFullName()),
+                singleLine(certificate.getCourse().getTitle()),
                 certificate.getIssuedAt().format(format), certificate.getUniqueCode());
         return text.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private String singleLine(String value) {
+        return value.replaceAll("\\R+", " ");
     }
 }

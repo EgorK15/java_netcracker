@@ -86,7 +86,7 @@ class EnrollmentServiceTest {
         progress.setLesson(lesson);
         progress.setCompletedAt(LocalDateTime.now());
         enrollment.getProgress().add(progress);
-        when(enrollmentRepository.findById(4L)).thenReturn(Optional.of(enrollment));
+        when(enrollmentRepository.findWithProgressById(4L)).thenReturn(Optional.of(enrollment));
         assertThat(service.getProgress(4L).progressPercent()).isEqualTo(33);
     }
 

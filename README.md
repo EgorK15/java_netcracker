@@ -43,14 +43,14 @@ docker compose -p lms-lite start
 Нужны JDK 21 и Maven 3.6.3 или новее. Сначала поднимите только БД:
 
 ```powershell
-docker compose -p lms-lite up -d db
+docker compose -p lms-lite up -d --wait db
 mvn clean verify
 mvn spring-boot:run
 ```
 
-По умолчанию приложение подключается к `jdbc:postgresql://localhost:5433/lms`, пользователь `lms`, локальный пароль `lms_local`.
+По умолчанию приложение слушает `127.0.0.1:8080` и подключается к `jdbc:postgresql://localhost:5433/lms` с пользователем `lms` и локальным паролем `lms_local`. Для запуска собранного файла используйте `java -jar target/lms-lite.jar`.
 
-Для своей PostgreSQL задайте окружение перед запуском:
+Для своей PostgreSQL выделите отдельную учебную базу. Hibernate использует `ddl-auto: update` и может изменить схему базы, заданной в `DB_URL`. Перед запуском задайте параметры подключения.
 
 ```powershell
 $env:DB_URL = 'jdbc:postgresql://localhost:5432/lms'
@@ -80,7 +80,7 @@ docker compose -p lms-lite-tests -f compose.test.yml up --abort-on-container-exi
 docker compose -p lms-lite-tests -f compose.test.yml down
 ```
 
-Тестовая БД находится в отдельном контейнере без постоянного volume. Тестовый профиль пересоздаёт таблицы: не передавайте ему адрес рабочей БД.
+Тестовая БД находится в отдельном контейнере. Тестовый профиль пересоздаёт таблицы. Для тестов подходит только выделенная база.
 
 После запуска приложения выполните полный пример:
 
@@ -88,7 +88,7 @@ docker compose -p lms-lite-tests -f compose.test.yml down
 powershell -ExecutionPolicy Bypass -File .\examples\demo.ps1
 ```
 
-Для другого порта: `-BaseUrl http://localhost:8081`. Пример создаёт новых пользователей с уникальными адресами и сохраняет сертификат в `target/demo-certificate.txt`.
+Для другого порта используйте `-BaseUrl http://localhost:8081`. Пример создаёт новых пользователей с уникальными адресами и сохраняет сертификат в `target/demo-certificate.txt`. При прерывании сценария уже созданные записи остаются в базе.
 
 ## Основные допущения
 

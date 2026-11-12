@@ -2,6 +2,7 @@ package com.example.lms;
 
 import com.example.lms.repository.*;
 import com.fasterxml.jackson.databind.*;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -26,6 +27,24 @@ class ApiTest {
     @Autowired ObjectMapper json;
     @Autowired EnrollmentRepository enrollmentRepository;
     @Autowired CertificateRepository certificateRepository;
+    @Autowired EntityManager entityManager;
+
+    @Test
+    void enrollmentListShowsSameProgressAsDetails() throws Exception {
+        Data data = createCourse();
+        complete(data, data.textId(), 33);
+        complete(data, data.videoId(), 66);
+        entityManager.flush();
+        entityManager.clear();
+
+        mvc.perform(get("/api/students/{id}/enrollments", data.studentId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id", is(data.enrollmentId()), Long.class))
+                .andExpect(jsonPath("$[0].progressPercent").value(66));
+        mvc.perform(get("/api/enrollments/{id}/progress", data.enrollmentId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progressPercent").value(66));
+    }
 
     @Test
     void completesMixedCourseAndDownloadsOneCertificate() throws Exception {
@@ -71,6 +90,8 @@ class ApiTest {
         Data data = createCourse();
         submit(data, 1, 1).andExpect(status().isOk()).andExpect(jsonPath("$.scorePercent").value(50));
         submit(data, 0, 1).andExpect(status().isOk()).andExpect(jsonPath("$.scorePercent").value(0));
+        entityManager.flush();
+        entityManager.clear();
         var enrollment = enrollmentRepository.findById(data.enrollmentId()).orElseThrow();
         assertThat(enrollment.getProgress()).hasSize(1);
         var progress = enrollment.getProgress().iterator().next();
@@ -79,9 +100,13 @@ class ApiTest {
         assertThat(enrollment.getProgressPercent()).isZero();
         submit(data, 1, 0).andExpect(status().isOk());
         submit(data, 0, 1).andExpect(status().isOk());
-        assertThat(progress.getQuizScore()).isEqualTo(100);
-        assertThat(progress.getCompletedAt()).isNotNull();
-        assertThat(enrollment.getProgressPercent()).isEqualTo(33);
+        entityManager.flush();
+        entityManager.clear();
+        var reloaded = enrollmentRepository.findById(data.enrollmentId()).orElseThrow();
+        var reloadedProgress = reloaded.getProgress().iterator().next();
+        assertThat(reloadedProgress.getQuizScore()).isEqualTo(100);
+        assertThat(reloadedProgress.getCompletedAt()).isNotNull();
+        assertThat(reloaded.getProgressPercent()).isEqualTo(33);
         assertThat(certificateRepository.findByStudentId(data.studentId())).isEmpty();
     }
 
@@ -217,9 +242,47 @@ class ApiTest {
     }
 
     @Test
+    void sumsLongCourseDurationInListAndDetails() throws Exception {
+        long instructor = create("/api/instructors", student("teacher@example.com")).get("id").asLong();
+        long course = create("/api/courses", Map.of("title", "Java", "instructorId", instructor)).get("id").asLong();
+        var lesson = Map.of("title", "Видео", "type", "VIDEO", "videoUrl", "https://example.com/java.mp4",
+                "durationMinutes", 1_500_000_000);
+        create("/api/courses/" + course + "/lessons", lesson);
+        create("/api/courses/" + course + "/lessons", lesson);
+        mvc.perform(patch("/api/courses/{id}/publish", course)).andExpect(status().isOk());
+        mvc.perform(get("/api/courses/{id}", course)).andExpect(jsonPath("$.duration").value(3_000_000_000L));
+        mvc.perform(get("/api/courses")).andExpect(jsonPath("$[0].duration").value(3_000_000_000L));
+    }
+
+    @Test
+    void rejectsFractionalIntegersAndNumericLessonType() throws Exception {
+        Data data = createCourse();
+        long draft = create("/api/courses", Map.of("title", "Черновик", "instructorId", data.instructorId()))
+                .get("id").asLong();
+        for (var body : List.of(
+                Map.of("title", "Видео", "type", 0, "videoUrl", "https://example.com/java.mp4", "durationMinutes", 2),
+                Map.of("title", "Видео", "type", "VIDEO", "videoUrl", "https://example.com/java.mp4", "durationMinutes", 2.5))) {
+            mvc.perform(post("/api/courses/{id}/lessons", draft).contentType(MediaType.APPLICATION_JSON)
+                            .content(json.writeValueAsString(body)))
+                    .andExpect(status().isBadRequest());
+        }
+        var answers = List.of(Map.of("questionId", data.firstQuestion(), "selectedOption", 1.5),
+                answer(data.secondQuestion(), 0));
+        mvc.perform(post("/api/lessons/{id}/submit", data.quizId()).contentType(MediaType.APPLICATION_JSON)
+                        .content(json.writeValueAsString(Map.of("enrollmentId", data.enrollmentId(), "answers", answers))))
+                .andExpect(status().isBadRequest());
+        mvc.perform(get("/api/courses/{id}/lessons", draft)).andExpect(jsonPath("$").isEmpty());
+        assertThat(enrollmentRepository.findById(data.enrollmentId()).orElseThrow().getProgress()).isEmpty();
+    }
+
+    @Test
     void openApiAndSwaggerAreAvailable() throws Exception {
         mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.paths['/api/courses']").exists())
+                .andExpect(jsonPath("$.paths['/api/courses'].post.responses['201'].content['application/json']").exists())
+                .andExpect(jsonPath("$.paths['/api/courses'].post.responses['400']").exists())
+                .andExpect(jsonPath("$.paths['/api/courses'].post.responses['404']").exists())
+                .andExpect(jsonPath("$.paths['/api/enrollments'].post.responses['409']").exists())
+                .andExpect(jsonPath("$.paths['/api/certificates/{id}/download'].get.responses['200'].content['text/plain']").exists())
                 .andExpect(jsonPath("$.paths['/api/lessons/{id}/submit']").exists());
         mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
     }

@@ -36,8 +36,8 @@ public class Course {
         return lessons.size();
     }
 
-    public int getTotalEstimatedMinutes() {
-        int total = 0;
+    public long getTotalEstimatedMinutes() {
+        long total = 0;
         for (Lesson lesson : lessons) {
             total += lesson.getEstimatedMinutes();
         }

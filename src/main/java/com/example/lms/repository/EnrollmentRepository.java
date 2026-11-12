@@ -10,8 +10,11 @@ import java.util.Optional;
 public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
     boolean existsByStudentIdAndCourseId(Long studentId, Long courseId);
 
-    @EntityGraph(attributePaths = {"student", "course", "course.lessons", "progress"})
+    @EntityGraph(attributePaths = {"student", "course", "progress"})
     List<Enrollment> findByStudentId(Long studentId);
+
+    @Query("select e from Enrollment e left join fetch e.progress where e.id = :id")
+    Optional<Enrollment> findWithProgressById(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select e from Enrollment e where e.id = :id")

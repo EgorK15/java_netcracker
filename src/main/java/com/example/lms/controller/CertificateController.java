@@ -3,6 +3,9 @@ package com.example.lms.controller;
 import com.example.lms.dto.CertificateResponse;
 import com.example.lms.service.CertificateService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +22,8 @@ public class CertificateController {
     }
 
     @Operation(summary = "Скачать текстовый сертификат в UTF-8")
+    @ApiResponse(responseCode = "200", description = "Текст сертификата",
+            content = @Content(mediaType = MediaType.TEXT_PLAIN_VALUE, schema = @Schema(type = "string")))
     @GetMapping("/{id}/download")
     public ResponseEntity<byte[]> download(@PathVariable Long id) {
         return ResponseEntity.ok()

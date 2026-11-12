@@ -5,6 +5,7 @@ import com.example.lms.exception.NotFoundException;
 import com.example.lms.model.*;
 import com.example.lms.repository.LessonRepository;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.net.URI;
@@ -42,7 +43,8 @@ public class LessonService {
     }
 
     public Lesson findLesson(Long id) {
-        return lessonRepository.findById(id).orElseThrow(() -> new NotFoundException("Урок не найден"));
+        Lesson lesson = lessonRepository.findById(id).orElseThrow(() -> new NotFoundException("Урок не найден"));
+        return Hibernate.unproxy(lesson, Lesson.class);
     }
 
     public LessonResponse getLesson(Long id) {
@@ -51,8 +53,8 @@ public class LessonService {
 
     @Transactional
     public LessonResponse updateLesson(Long id, CreateLessonRequest request) {
+        Course course = lockCourseForLesson(id);
         Lesson lesson = findLesson(id);
-        Course course = courseService.getForUpdate(lesson.getCourse().getId());
         courseService.requireDraft(course);
         if (lesson.getType() != request.type()) {
             throw new IllegalStateException("Менять тип урока нельзя: создайте новый урок");
@@ -64,11 +66,17 @@ public class LessonService {
 
     @Transactional
     public void deleteLesson(Long id) {
+        Course course = lockCourseForLesson(id);
         Lesson lesson = findLesson(id);
-        Course course = courseService.getForUpdate(lesson.getCourse().getId());
         courseService.requireDraft(course);
         course.getLessons().remove(lesson);
         lessonRepository.delete(lesson);
+    }
+
+    private Course lockCourseForLesson(Long id) {
+        Long courseId = lessonRepository.findCourseId(id)
+                .orElseThrow(() -> new NotFoundException("Урок не найден"));
+        return courseService.getForUpdate(courseId);
     }
 
     public QuizLesson findQuiz(Long id) {

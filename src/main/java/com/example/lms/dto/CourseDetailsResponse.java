@@ -4,6 +4,6 @@ import com.example.lms.enums.CourseStatus;
 import java.util.List;
 
 public record CourseDetailsResponse(Long id, String title, String description, String authorName,
-                                    CourseStatus status, int totalLessons, int duration,
+                                    CourseStatus status, int totalLessons, long duration,
                                     List<LessonResponse> lessons) {
 }

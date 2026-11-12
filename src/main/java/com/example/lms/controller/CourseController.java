@@ -3,9 +3,13 @@ package com.example.lms.controller;
 import com.example.lms.dto.*;
 import com.example.lms.service.CourseService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -16,6 +20,12 @@ public class CourseController {
     private final CourseService courseService;
 
     @Operation(summary = "Создать курс", description = "Создаёт курс в статусе DRAFT")
+    @ApiResponse(responseCode = "201", description = "Курс создан",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CourseResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Некорректные данные",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
+    @ApiResponse(responseCode = "404", description = "Инструктор не найден",
+            content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class)))
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CourseResponse create(@Valid @RequestBody CreateCourseRequest request) {

@@ -120,7 +120,7 @@ public class EnrollmentService {
     }
 
     private Enrollment findEnrollment(Long id) {
-        return enrollmentRepository.findById(id)
+        return enrollmentRepository.findWithProgressById(id)
                 .orElseThrow(() -> new NotFoundException("Запись на курс не найдена"));
     }
 
