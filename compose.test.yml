@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: lms_test
+      POSTGRES_USER: lms_test
+      POSTGRES_PASSWORD: test_password
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lms_test -d lms_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  tests:
+    image: maven:3.9-eclipse-temurin-21
+    working_dir: /app
+    volumes:
+      - .:/app
+      - maven_cache:/root/.m2
+    environment:
+      TEST_DB_URL: jdbc:postgresql://db:5432/lms_test
+      TEST_DB_USERNAME: lms_test
+      TEST_DB_PASSWORD: test_password
+      TEST_DB_DRIVER: org.postgresql.Driver
+    command: ["mvn", "-B", "-ntp", "clean", "verify"]
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  maven_cache:
+    name: lms_maven_cache
