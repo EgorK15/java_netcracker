@@ -67,6 +67,8 @@ mvn spring-boot:run
 mvn clean verify
 ```
 
+Отдельно юнит-тесты сервисов без Spring и базы запускаются командой `mvn clean verify "-Dtest=*ServiceTest"`. После `verify` JaCoCo создаёт отчёт в `target/site/jacoco/index.html`. Для покрытия только юнит-тестами запускайте команду с фильтром на чистой сборке.
+
 Тесты запускаются с профилем `test` на H2 в памяти; обычный запуск всегда использует PostgreSQL. Без установки Java можно выполнить ту же проверку в Docker:
 
 ```powershell
