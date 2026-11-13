@@ -43,7 +43,14 @@ public class QuizService {
         int score = correctCount * 100 / total;
         boolean passed = score >= quiz.getPassingScore();
         enrollmentService.saveProgress(enrollment, quiz, score, passed);
-        return new QuizResultResponse(quiz.getId(), quiz.getTitle(), total, correctCount, score,
-                passed, quiz.getPassingScore());
+        return QuizResultResponse.builder()
+                .quizId(quiz.getId())
+                .quizTitle(quiz.getTitle())
+                .totalQuestions(total)
+                .correctAnswers(correctCount)
+                .scorePercent(score)
+                .passed(passed)
+                .passingScore(quiz.getPassingScore())
+                .build();
     }
 }

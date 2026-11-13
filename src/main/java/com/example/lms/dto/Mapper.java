@@ -11,20 +11,39 @@ public final class Mapper {
 
     public static UserResponse user(User user) {
         String bio = user instanceof Instructor instructor ? instructor.getBio() : null;
-        return new UserResponse(user.getId(), user.getFirstName(), user.getLastName(), user.getEmail(),
-                user.getCreatedAt(), bio);
+        return UserResponse.builder()
+                .id(user.getId())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
+                .createdAt(user.getCreatedAt())
+                .bio(bio)
+                .build();
     }
 
     public static CourseResponse course(Course course) {
-        return new CourseResponse(course.getId(), course.getTitle(), course.getDescription(),
-                course.getAuthor().getFullName(), course.getStatus(), course.getTotalLessons(),
-                course.getTotalEstimatedMinutes());
+        return CourseResponse.builder()
+                .id(course.getId())
+                .title(course.getTitle())
+                .description(course.getDescription())
+                .authorName(course.getAuthor().getFullName())
+                .status(course.getStatus())
+                .totalLessons(course.getTotalLessons())
+                .duration(course.getTotalEstimatedMinutes())
+                .build();
     }
 
     public static CourseDetailsResponse courseDetails(Course course) {
-        return new CourseDetailsResponse(course.getId(), course.getTitle(), course.getDescription(),
-                course.getAuthor().getFullName(), course.getStatus(), course.getTotalLessons(),
-                course.getTotalEstimatedMinutes(), course.getLessons().stream().map(Mapper::lesson).toList());
+        return CourseDetailsResponse.builder()
+                .id(course.getId())
+                .title(course.getTitle())
+                .description(course.getDescription())
+                .authorName(course.getAuthor().getFullName())
+                .status(course.getStatus())
+                .totalLessons(course.getTotalLessons())
+                .duration(course.getTotalEstimatedMinutes())
+                .lessons(course.getLessons().stream().map(Mapper::lesson).toList())
+                .build();
     }
 
     public static QuestionResponse question(Question question) {
@@ -33,25 +52,51 @@ public final class Mapper {
 
     public static LessonResponse lesson(Lesson lesson) {
         if (lesson instanceof VideoLesson video) {
-            return new LessonResponse(video.getId(), video.getTitle(), video.getType(), video.getOrderIndex(),
-                    video.getEstimatedMinutes(), video.getVideoUrl(), video.getDurationMinutes(),
-                    null, null, null, null, null);
+            return LessonResponse.Video.builder()
+                    .id(video.getId())
+                    .title(video.getTitle())
+                    .type(video.getType())
+                    .orderIndex(video.getOrderIndex())
+                    .estimatedMinutes(video.getEstimatedMinutes())
+                    .videoUrl(video.getVideoUrl())
+                    .durationMinutes(video.getDurationMinutes())
+                    .build();
         }
         if (lesson instanceof TextLesson text) {
-            return new LessonResponse(text.getId(), text.getTitle(), text.getType(), text.getOrderIndex(),
-                    text.getEstimatedMinutes(), null, null, text.getContent(), text.getReadingTimeMinutes(),
-                    null, null, null);
+            return LessonResponse.Text.builder()
+                    .id(text.getId())
+                    .title(text.getTitle())
+                    .type(text.getType())
+                    .orderIndex(text.getOrderIndex())
+                    .estimatedMinutes(text.getEstimatedMinutes())
+                    .content(text.getContent())
+                    .readingTimeMinutes(text.getReadingTimeMinutes())
+                    .build();
         }
         QuizLesson quiz = (QuizLesson) lesson;
-        return new LessonResponse(quiz.getId(), quiz.getTitle(), quiz.getType(), quiz.getOrderIndex(),
-                quiz.getEstimatedMinutes(), null, null, null, null, quiz.getPassingScore(),
-                quiz.getTimeLimitMinutes(), quiz.getQuestions().stream().map(Mapper::question).toList());
+        return LessonResponse.Quiz.builder()
+                .id(quiz.getId())
+                .title(quiz.getTitle())
+                .type(quiz.getType())
+                .orderIndex(quiz.getOrderIndex())
+                .estimatedMinutes(quiz.getEstimatedMinutes())
+                .passingScore(quiz.getPassingScore())
+                .timeLimitMinutes(quiz.getTimeLimitMinutes())
+                .questions(quiz.getQuestions().stream().map(Mapper::question).toList())
+                .build();
     }
 
     public static EnrollmentResponse enrollment(Enrollment enrollment) {
-        return new EnrollmentResponse(enrollment.getId(), enrollment.getStudent().getId(),
-                enrollment.getCourse().getId(), enrollment.getCourse().getTitle(), enrollment.getStatus(),
-                enrollment.getProgressPercent(), enrollment.getEnrolledAt(), enrollment.getCompletedAt());
+        return EnrollmentResponse.builder()
+                .id(enrollment.getId())
+                .studentId(enrollment.getStudent().getId())
+                .courseId(enrollment.getCourse().getId())
+                .courseTitle(enrollment.getCourse().getTitle())
+                .status(enrollment.getStatus())
+                .progressPercent(enrollment.getProgressPercent())
+                .enrolledAt(enrollment.getEnrolledAt())
+                .completedAt(enrollment.getCompletedAt())
+                .build();
     }
 
     public static ProgressResponse progress(Enrollment enrollment) {
@@ -64,15 +109,27 @@ public final class Mapper {
         var lessons = enrollment.getCourse().getLessons().stream()
                 .map(lesson -> new LessonProgressResponse(lesson.getId(), lesson.getTitle(),
                         completed.contains(lesson.getId()))).toList();
-        return new ProgressResponse(enrollment.getId(), enrollment.getCourse().getTitle(),
-                enrollment.getProgressPercent(), enrollment.getCompletedLessons(), lessons.size(),
-                enrollment.getStatus(), lessons);
+        return ProgressResponse.builder()
+                .enrollmentId(enrollment.getId())
+                .courseTitle(enrollment.getCourse().getTitle())
+                .progressPercent(enrollment.getProgressPercent())
+                .completedLessons(enrollment.getCompletedLessons())
+                .totalLessons(lessons.size())
+                .status(enrollment.getStatus())
+                .lessons(lessons)
+                .build();
     }
 
     public static CertificateResponse certificate(Certificate certificate) {
-        return new CertificateResponse(certificate.getId(), certificate.getStudent().getId(),
-                certificate.getStudent().getFullName(), certificate.getCourse().getId(),
-                certificate.getCourse().getTitle(), certificate.getIssuedAt(), certificate.getUniqueCode());
+        return CertificateResponse.builder()
+                .id(certificate.getId())
+                .studentId(certificate.getStudent().getId())
+                .studentName(certificate.getStudent().getFullName())
+                .courseId(certificate.getCourse().getId())
+                .courseTitle(certificate.getCourse().getTitle())
+                .issuedAt(certificate.getIssuedAt())
+                .uniqueCode(certificate.getUniqueCode())
+                .build();
     }
 
 }

@@ -93,56 +93,41 @@ public class LessonService {
 
     private void fillLesson(Lesson lesson, CreateLessonRequest request) {
         lesson.setTitle(request.title().strip());
-        if (lesson instanceof VideoLesson video) {
-            requireText(request.videoUrl(), "Для видео нужен videoUrl");
-            URI uri = URI.create(request.videoUrl());
-            if (uri.getHost() == null || !("https".equalsIgnoreCase(uri.getScheme())
-                    || "http".equalsIgnoreCase(uri.getScheme()))) {
-                throw new IllegalArgumentException("videoUrl должен быть HTTP или HTTPS адресом");
-            }
-            requirePositive(request.durationMinutes(), "Укажите durationMinutes больше нуля");
-            video.setVideoUrl(request.videoUrl());
-            video.setDurationMinutes(request.durationMinutes());
-        } else if (lesson instanceof TextLesson text) {
-            requireText(request.content(), "Для текстового урока нужен content");
-            requirePositive(request.readingTimeMinutes(), "Укажите readingTimeMinutes больше нуля");
-            text.setContent(request.content());
-            text.setReadingTimeMinutes(request.readingTimeMinutes());
-        } else if (lesson instanceof QuizLesson quiz) {
-            if (request.questions() == null || request.questions().isEmpty()) {
-                throw new IllegalArgumentException("В тесте должен быть хотя бы один вопрос");
-            }
-            if (request.passingScore() == null || request.passingScore() < 1 || request.passingScore() > 100) {
-                throw new IllegalArgumentException("passingScore должен быть от 1 до 100");
-            }
-            List<Question> questions = new ArrayList<>();
-            for (CreateQuestionRequest item : request.questions()) {
-                if (item.correctOptionIndex() < 0 || item.correctOptionIndex() >= item.options().size()) {
-                    throw new IllegalArgumentException("Индекс правильного ответа выходит за границы вариантов");
+        switch (request) {
+            case CreateLessonRequest.Video data -> {
+                VideoLesson video = (VideoLesson) lesson;
+                URI uri = URI.create(data.videoUrl());
+                if (uri.getHost() == null || !("https".equalsIgnoreCase(uri.getScheme())
+                        || "http".equalsIgnoreCase(uri.getScheme()))) {
+                    throw new IllegalArgumentException("videoUrl должен быть HTTP или HTTPS адресом");
                 }
-                Question question = new Question();
-                question.setText(item.text());
-                question.setOptions(new ArrayList<>(item.options()));
-                question.setCorrectOptionIndex(item.correctOptionIndex());
-                question.setQuiz(quiz);
-                questions.add(question);
+                video.setVideoUrl(data.videoUrl());
+                video.setDurationMinutes(data.durationMinutes());
             }
-            quiz.getQuestions().clear();
-            quiz.getQuestions().addAll(questions);
-            quiz.setPassingScore(request.passingScore());
-            quiz.setTimeLimitMinutes(request.timeLimitMinutes());
-        }
-    }
-
-    private void requireText(String value, String message) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException(message);
-        }
-    }
-
-    private void requirePositive(Integer value, String message) {
-        if (value == null || value < 1) {
-            throw new IllegalArgumentException(message);
+            case CreateLessonRequest.Text data -> {
+                TextLesson text = (TextLesson) lesson;
+                text.setContent(data.content());
+                text.setReadingTimeMinutes(data.readingTimeMinutes());
+            }
+            case CreateLessonRequest.Quiz data -> {
+                QuizLesson quiz = (QuizLesson) lesson;
+                List<Question> questions = new ArrayList<>();
+                for (CreateQuestionRequest item : data.questions()) {
+                    if (item.correctOptionIndex() >= item.options().size()) {
+                        throw new IllegalArgumentException("Индекс правильного ответа выходит за границы вариантов");
+                    }
+                    Question question = new Question();
+                    question.setText(item.text());
+                    question.setOptions(new ArrayList<>(item.options()));
+                    question.setCorrectOptionIndex(item.correctOptionIndex());
+                    question.setQuiz(quiz);
+                    questions.add(question);
+                }
+                quiz.getQuestions().clear();
+                quiz.getQuestions().addAll(questions);
+                quiz.setPassingScore(data.passingScore());
+                quiz.setTimeLimitMinutes(data.timeLimitMinutes());
+            }
         }
     }
 }

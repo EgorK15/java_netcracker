@@ -1,7 +1,6 @@
 package com.example.lms;
 
 import com.example.lms.dto.*;
-import com.example.lms.enums.LessonType;
 import com.example.lms.exception.AlreadyEnrolledException;
 import com.example.lms.repository.*;
 import com.example.lms.service.*;
@@ -17,7 +16,7 @@ import java.util.concurrent.*;
 import java.util.function.Supplier;
 import static org.assertj.core.api.Assertions.*;
 
-@SpringBootTest
+@SpringBootTest(useMainMethod = SpringBootTest.UseMainMethod.ALWAYS)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class ConcurrencyTest {
@@ -77,7 +76,7 @@ class ConcurrencyTest {
         long student = userService.createStudent(new CreateStudentRequest("Иван", "Иванов", "s" + suffix + "@example.com")).id();
         long instructor = userService.createInstructor(new CreateInstructorRequest("Анна", "Иванова", "t" + suffix + "@example.com", null)).id();
         long course = courseService.createCourse(new CreateCourseRequest("Java", null, instructor)).id();
-        var request = new CreateLessonRequest("Текст", LessonType.TEXT, null, null, "Java", 1, null, null, null);
+        var request = new CreateLessonRequest.Text("Текст", "Java", 1);
         long first = lessonService.createLesson(course, request).id();
         long second = lessonService.createLesson(course, request).id();
         courseService.publishCourse(course);
