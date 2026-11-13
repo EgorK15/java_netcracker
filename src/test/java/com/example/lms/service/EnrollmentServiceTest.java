@@ -125,9 +125,15 @@ class EnrollmentServiceTest {
         QuizLesson quiz = new QuizLesson();
         quiz.setId(5L);
         quiz.setCourse(course);
+        LessonProgress failed = new LessonProgress();
+        failed.setLesson(quiz);
+        failed.setQuizScore(50);
+        enrollment.getProgress().add(failed);
         when(enrollmentRepository.findForUpdate(4L)).thenReturn(Optional.of(enrollment));
         when(lessonService.findLesson(5L)).thenReturn(quiz);
         assertThatThrownBy(() -> service.completeLesson(4L, 5L)).isInstanceOf(IllegalStateException.class);
+        assertThat(failed.getCompletedAt()).isNull();
+        verify(progressRepository, never()).save(any());
     }
 
     @Test
@@ -144,6 +150,37 @@ class EnrollmentServiceTest {
         assertThat(enrollment.getProgress()).hasSize(1);
         assertThat(enrollment.getProgress().iterator().next().getQuizScore()).isEqualTo(60);
         assertThat(enrollment.getProgressPercent()).isZero();
+        verify(certificateService, never()).issueCertificate(any());
+    }
+
+    @Test
+    void successfulRetakeKeepsOriginalCompletionDate() {
+        QuizLesson quiz = new QuizLesson();
+        quiz.setId(5L);
+        quiz.setCourse(course);
+        course.getLessons().add(quiz);
+        service.saveProgress(enrollment, quiz, 70, true);
+        var progress = enrollment.getProgress().iterator().next();
+        var firstCompletion = progress.getCompletedAt();
+
+        service.saveProgress(enrollment, quiz, 100, true);
+
+        assertThat(firstCompletion).isNotNull();
+        assertThat(progress.getCompletedAt()).isEqualTo(firstCompletion);
+        assertThat(progress.getQuizScore()).isEqualTo(100);
+        assertThat(enrollment.getProgress()).hasSize(1);
+        verify(certificateService, never()).issueCertificate(any());
+    }
+
+    @Test
+    void emptyCourseHasZeroProgressAndDoesNotIssueCertificate() {
+        course.getLessons().clear();
+        assertThat(enrollment.getProgressPercent()).isZero();
+
+        service.saveProgress(enrollment, lesson, 0, false);
+
+        assertThat(enrollment.getStatus()).isEqualTo(EnrollmentStatus.ACTIVE);
+        assertThat(enrollment.getCompletedAt()).isNull();
         verify(certificateService, never()).issueCertificate(any());
     }
 

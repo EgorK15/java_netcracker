@@ -18,7 +18,7 @@ import static org.hamcrest.Matchers.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@SpringBootTest(useMainMethod = SpringBootTest.UseMainMethod.ALWAYS)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
@@ -28,6 +28,38 @@ class ApiTest {
     @Autowired EnrollmentRepository enrollmentRepository;
     @Autowired CertificateRepository certificateRepository;
     @Autowired EntityManager entityManager;
+
+    @Test
+    void readsProfilesAndLessonDetails() throws Exception {
+        Data data = createCourse();
+        mvc.perform(get("/api/students/{id}", data.studentId()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.email").value("student@example.com"));
+        mvc.perform(get("/api/instructors/{id}", data.instructorId()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.email").value("teacher@example.com"));
+        mvc.perform(get("/api/lessons/{id}", data.videoId()))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.durationMinutes").value(7))
+                .andExpect(jsonPath("$.questions").doesNotExist());
+    }
+
+    @Test
+    void rejectsInvalidCourseTransitions() throws Exception {
+        long instructor = create("/api/instructors", student("teacher@example.com")).get("id").asLong();
+        long draft = create("/api/courses", Map.of("title", "Java", "instructorId", instructor)).get("id").asLong();
+        mvc.perform(patch("/api/courses/{id}/archive", draft)).andExpect(status().isBadRequest());
+        create("/api/courses/" + draft + "/lessons", text("Введение"));
+        mvc.perform(patch("/api/courses/{id}/publish", draft)).andExpect(status().isOk());
+        mvc.perform(patch("/api/courses/{id}/publish", draft)).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/courses/{id}", draft)).andExpect(jsonPath("$.status").value("PUBLISHED"));
+    }
+
+    @Test
+    void distinguishesMissingLessonAndWrongLessonType() throws Exception {
+        Data data = createCourse();
+        mvc.perform(delete("/api/lessons/999999")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/lessons/{id}/questions", data.textId())).andExpect(status().isBadRequest());
+        mvc.perform(delete("/api/enrollments/999999")).andExpect(status().isNotFound());
+        mvc.perform(get("/api/certificates/999999/download")).andExpect(status().isNotFound());
+    }
 
     @Test
     void enrollmentListShowsSameProgressAsDetails() throws Exception {
@@ -283,6 +315,10 @@ class ApiTest {
                 .andExpect(jsonPath("$.paths['/api/courses'].post.responses['404']").exists())
                 .andExpect(jsonPath("$.paths['/api/enrollments'].post.responses['409']").exists())
                 .andExpect(jsonPath("$.paths['/api/certificates/{id}/download'].get.responses['200'].content['text/plain']").exists())
+                .andExpect(jsonPath("$.paths['/api/courses/{courseId}/lessons'].post.requestBody.content['application/json'].schema.discriminator.mapping.VIDEO")
+                        .value("#/components/schemas/VideoLessonRequest"))
+                .andExpect(jsonPath("$.components.schemas.VideoLessonRequest.required", hasItem("type")))
+                .andExpect(jsonPath("$.components.schemas.VideoLessonRequest.properties.type.enum[0]").value("VIDEO"))
                 .andExpect(jsonPath("$.paths['/api/lessons/{id}/submit']").exists());
         mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
     }

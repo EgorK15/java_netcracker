@@ -75,6 +75,21 @@ class QuizServiceTest {
     }
 
     @Test
+    void rejectsNegativeOptionBeforeSavingProgress() {
+        assertThatThrownBy(() -> service.submitQuiz(5L, request(-1, 0)))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(enrollmentService, never()).saveProgress(any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void rejectsEmptyQuizBeforeCalculatingScore() {
+        quiz.getQuestions().clear();
+        assertThatThrownBy(() -> service.submitQuiz(5L, new SubmitQuizRequest(1L, List.of())))
+                .isInstanceOf(IllegalArgumentException.class);
+        verify(enrollmentService, never()).saveProgress(any(), any(), any(), anyBoolean());
+    }
+
+    @Test
     void rejectsMissingAnswer() {
         var request = new SubmitQuizRequest(1L, List.of(new QuizAnswerRequest(10L, 1)));
         assertThatThrownBy(() -> service.submitQuiz(5L, request)).isInstanceOf(IllegalArgumentException.class);
