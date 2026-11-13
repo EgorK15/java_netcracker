@@ -315,10 +315,14 @@ class ApiTest {
                 .andExpect(jsonPath("$.paths['/api/courses'].post.responses['404']").exists())
                 .andExpect(jsonPath("$.paths['/api/enrollments'].post.responses['409']").exists())
                 .andExpect(jsonPath("$.paths['/api/certificates/{id}/download'].get.responses['200'].content['text/plain']").exists())
-                .andExpect(jsonPath("$.paths['/api/courses/{courseId}/lessons'].post.requestBody.content['application/json'].schema.discriminator.mapping.VIDEO")
+                .andExpect(jsonPath("$.components.schemas.CreateLessonRequest.discriminator.mapping.VIDEO")
                         .value("#/components/schemas/VideoLessonRequest"))
                 .andExpect(jsonPath("$.components.schemas.VideoLessonRequest.required", hasItem("type")))
-                .andExpect(jsonPath("$.components.schemas.VideoLessonRequest.properties.type.enum[0]").value("VIDEO"))
+                .andExpect(jsonPath("$.components.schemas.VideoLessonRequest.allOf[1].properties.type.enum[0]").value("VIDEO"))
+                .andExpect(jsonPath("$.paths['/api/courses/{courseId}/lessons'].post.requestBody.content['application/json'].schema.oneOf[*]['$ref']",
+                        containsInAnyOrder("#/components/schemas/VideoLessonRequest", "#/components/schemas/TextLessonRequest",
+                                "#/components/schemas/QuizLessonRequest")))
+                .andExpect(jsonPath("$.paths['/api/lessons/{id}'].put.requestBody.content['application/json'].schema.oneOf", hasSize(3)))
                 .andExpect(jsonPath("$.paths['/api/lessons/{id}/submit']").exists());
         mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
     }
